@@ -60,7 +60,7 @@ The script will automatically resume from where it left off, skipping files alre
 
 ## License
 
-MIT License
+GPL License
 
 ---
 

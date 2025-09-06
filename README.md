@@ -18,7 +18,7 @@ This project provides a batch processor for Optical Character Recognition (OCR) 
 - [pdf2image](https://pypi.org/project/pdf2image/)
 - [numpy](https://numpy.org/)
 - [opencv-python](https://pypi.org/project/opencv-python/)
-- [easyocr](https://github.com/JaidedAI/EasyOCR)
+- pytesseract
 - Poppler (for `pdf2image`)
 
 ## Installation

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 OCR Batch Processor dengan Resume Otomatis (pakai pytesseract)
 - Membaca file PDF dari folder target

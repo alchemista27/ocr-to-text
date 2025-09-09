@@ -5,6 +5,7 @@ OCR Batch Processor dengan Resume Otomatis (pakai pytesseract)
 - Memproses 500 file per batch
 - Menyimpan hasil di folder output
 - Otomatis skip file yang sudah selesai (pakai log file)
+- Hanya memproses file .pdf
 """
 
 import os
@@ -19,10 +20,13 @@ LOG_FILE = os.path.join(OUTPUT_PATH, "processed.log")
 # Buat folder output kalau belum ada
 os.makedirs(OUTPUT_PATH, exist_ok=True)
 
-# Ambil semua file di input
-file_list = sorted(os.listdir(INPUT_PATH))
-file_list = file_list[1:]  # skip index 0 kalau ada file aneh
-print(f"Total file ditemukan: {len(file_list)}")
+# Ambil semua file di input, hanya yang .pdf
+file_list = sorted([
+    f for f in os.listdir(INPUT_PATH)
+    if f.lower().endswith(".pdf")
+])
+
+print(f"Total file PDF ditemukan: {len(file_list)}")
 
 # === Baca file log kalau ada ===
 if os.path.exists(LOG_FILE):

@@ -1,11 +1,9 @@
 """
-OCR Batch Processor dengan Resume Otomatis (pakai pytesseract)
+OCR Processor dengan Auto-Skip File Rusak (pakai pytesseract)
 - Membaca file PDF dari folder target
-- Menggunakan Tesseract OCR (CPU friendly)
-- Memproses 500 file per batch
-- Menyimpan hasil di folder output
-- Otomatis skip file yang sudah selesai (pakai log file)
-- Hanya memproses file .pdf
+- Hanya memproses file .pdf valid (skip ._xxx.pdf atau kosong)
+- Tidak pakai looping batch, langsung cek per file
+- Skip otomatis kalau file gagal dibaca (corrupt/bukan PDF)
 """
 
 import os
@@ -20,62 +18,49 @@ LOG_FILE = os.path.join(OUTPUT_PATH, "processed.log")
 # Buat folder output kalau belum ada
 os.makedirs(OUTPUT_PATH, exist_ok=True)
 
-# Ambil semua file di input, hanya yang .pdf
+# Ambil semua file PDF yang valid
 file_list = sorted([
     f for f in os.listdir(INPUT_PATH)
     if f.lower().endswith(".pdf")
+    and not f.startswith("._")  # skip file macOS resource fork
+    and os.path.getsize(os.path.join(INPUT_PATH, f)) > 0  # skip file kosong
 ])
 
 print(f"Total file PDF ditemukan: {len(file_list)}")
 
-# === Baca file log kalau ada ===
-if os.path.exists(LOG_FILE):
-    with open(LOG_FILE, "r") as f:
-        processed_files = set(line.strip() for line in f if line.strip())
-else:
-    processed_files = set()
+# === Loop per file ===
+for f in file_list:
+    file_name = os.path.join(INPUT_PATH, f)
+    output_file = os.path.join(OUTPUT_PATH, f'{f[:-4]}.txt')
 
-print(f"File sudah diproses: {len(processed_files)}")
+    # Skip kalau sudah ada hasilnya
+    if os.path.exists(output_file):
+        print(f"⏭️ Skip (sudah ada): {f}")
+        continue
 
-# === Parameter batch ===
-batch_size = 500
+    print(f"\n🔄 Memproses file: {f}")
 
-# === Loop per batch ===
-for batch_start in range(0, len(file_list), batch_size):
-    batch_end = batch_start + batch_size
-    batch_files = file_list[batch_start:batch_end]
-
-    print(f"\n🔄 Memproses batch {batch_start} - {batch_end-1} "
-          f"(total {len(batch_files)} file)")
-
-    for f in batch_files:
-        if f in processed_files:
-            print(f"⏭️ Skip (sudah ada): {f}")
+    try:
+        # Konversi PDF ke gambar
+        try:
+            pages = convert_from_path(file_name, dpi=300)
+        except Exception as e:
+            print(f"⚠️ Skip {f} (bukan PDF valid / rusak): {e}")
             continue
 
-        file_name = os.path.join(INPUT_PATH, f)
+        all_text = []
 
-        try:
-            # Konversi PDF ke gambar (DPI 300 untuk OCR yang lebih akurat)
-            pages = convert_from_path(file_name, dpi=300)
-            all_text = []
+        # OCR per halaman
+        for page in pages:
+            text = pytesseract.image_to_string(page, lang="ind+eng")
+            text = " ".join(text.split())  # rapikan spasi
+            all_text.append(text)
 
-            # OCR per halaman
-            for page in pages:
-                text = pytesseract.image_to_string(page, lang="ind+eng")
-                text = " ".join(text.split())  # rapikan spasi
-                all_text.append(text)
+        # Simpan hasil ke .txt
+        with open(output_file, 'w', encoding='utf-8') as o:
+            o.write("\n\n".join(all_text))
 
-            # Simpan hasil ke .txt
-            output_file = os.path.join(OUTPUT_PATH, f'{f[:-4]}.txt')
-            with open(output_file, 'w', encoding='utf-8') as o:
-                o.write("\n\n".join(all_text))
+        print(f"✅ Selesai: {f}")
 
-            # Tambahkan ke log
-            with open(LOG_FILE, "a") as log:
-                log.write(f + "\n")
-
-            print(f"✅ Selesai: {f}")
-
-        except Exception as e:
-            print(f"❌ Error memproses {f}: {e}")
+    except Exception as e:
+        print(f"❌ Error memproses {f}: {e}")
